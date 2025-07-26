@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.express as px
 
 def show_visualization_tab():
     st.header("📈 Visualizaciones por Departamento")
@@ -123,3 +124,148 @@ def show_visualization_tab():
     )
 
     st.plotly_chart(fig2, use_container_width=True)
+        # ================================
+    # TERCER GRÁFICO - BURBUJAS
+    # ================================
+    st.subheader("🟢 Comparativo de Departamentos: Matrícula vs Cobertura (Gráfico de Burbujas)")
+
+    # Preparación del dataframe base
+    df_bubble = df[['departamento', 'a_o', 'tasa_matriculaci_n_5_16', 'cobertura_neta', 'poblaci_n_5_16']].copy()
+    df_bubble = df_bubble.dropna()
+
+    # Selección del año
+    years = sorted(df_bubble['a_o'].unique())
+    selected_year = st.selectbox("Selecciona un año (Gráfico 3)", years, index=len(years)-1)
+
+    # Filtrar y agregar datos por departamento
+    df_filtered = df_bubble[df_bubble['a_o'] == selected_year]
+    df_grouped = df_filtered.groupby('departamento', as_index=False).agg({
+        'tasa_matriculaci_n_5_16': 'mean',
+        'cobertura_neta': 'mean',
+        'poblaci_n_5_16': 'mean'
+    })
+
+    fig3 = px.scatter(
+        df_grouped,
+        x='cobertura_neta',
+        y='tasa_matriculaci_n_5_16',
+        size='poblaci_n_5_16',
+        color='departamento',
+        hover_name='departamento',
+        size_max=60,
+        labels={
+            'cobertura_neta': 'Cobertura Neta (%)',
+            'tasa_matriculaci_n_5_16': 'Tasa de Matrícula (%)',
+            'poblaci_n_5_16': 'Población 5-16 años'
+        },
+        title=f"Tasa de Matrícula vs Cobertura Neta - Año {selected_year}"
+    )
+
+    fig3.update_layout(
+        height=600,
+        margin=dict(l=40, r=40, t=60, b=40)
+    )
+
+    st.plotly_chart(fig3, use_container_width=True)
+
+    # mapa de calor
+    st.subheader("🔥 Mapa de Calor Interactivo: Cobertura Neta por Departamento y Año")
+
+    df_heatmap = df.dropna(subset=['cobertura_neta'])
+
+    df_pivot = df_heatmap.pivot_table(
+        index='departamento',
+        columns='a_o',
+        values='cobertura_neta',
+        aggfunc='mean'
+    ).round(1).reset_index()
+
+    # Convertimos a formato largo
+    df_melted = df_pivot.melt(id_vars='departamento', var_name='a_o', value_name='cobertura_neta')
+
+    fig_heatmap = px.density_heatmap(
+        df_melted,
+        x='a_o',
+        y='departamento',
+        z='cobertura_neta',
+        color_continuous_scale='YlGnBu',
+        text_auto=True,
+        title="Mapa de Calor: Cobertura Neta Promedio por Departamento y Año"
+    )
+
+    fig_heatmap.update_layout(
+        height=700,
+        xaxis_title="Año",
+        yaxis_title="Departamento",
+        coloraxis_colorbar=dict(title="Cobertura (%)"),
+        margin=dict(l=0, r=0, t=60, b=0)
+    )
+
+    st.plotly_chart(fig_heatmap, use_container_width=True)
+
+
+# boxplot
+    # ================================
+    # GRÁFICO 3: Boxplot de cobertura neta por departamento con filtro individual
+    # ================================
+    st.subheader("📊 Distribución de Cobertura Neta por Departamento")
+
+    selected_depto_3 = st.selectbox("Selecciona un departamento (Gráfico 3)", deptos)
+
+    df_3 = df[df['departamento'] == selected_depto_3]
+
+    fig3 = px.box(df_3, x='departamento', y='cobertura_neta', points='all', color='departamento')
+    fig3.update_layout(
+        xaxis_title="Departamento",
+        yaxis_title="Cobertura Neta (%)",
+        height=500
+    )
+    st.plotly_chart(fig3, use_container_width=True)
+
+         # ================================
+    # CUARTO GRÁFICO - GRÁFICO 3D INTERACTIVO CORREGIDO
+    # ================================
+    st.subheader("🧊 Gráfico 3D: Matrícula, Cobertura y Población (Animado)")
+
+    df_3d = df[['departamento', 'a_o', 'tasa_matriculaci_n_5_16', 'cobertura_neta', 'poblaci_n_5_16']].dropna()
+
+    # Filtrar población válida (mayores a 500)
+    df_3d = df_3d[df_3d['poblaci_n_5_16'] > 500]
+
+    df_3d_grouped = df_3d.groupby(['departamento', 'a_o'], as_index=False).agg({
+        'tasa_matriculaci_n_5_16': 'mean',
+        'cobertura_neta': 'mean',
+        'poblaci_n_5_16': 'mean'
+    })
+
+    # Escala logarítmica para mejorar visibilidad si hay mucha disparidad
+    fig3d = px.scatter_3d(
+        df_3d_grouped,
+        x='tasa_matriculaci_n_5_16',
+        y='cobertura_neta',
+        z='poblaci_n_5_16',
+        color='departamento',
+        animation_frame='a_o',
+        size='poblaci_n_5_16',
+        size_max=100,  # Tamaño máximo de burbuja
+        log_z=True,   # Escala log para mejor visualización
+        labels={
+            'tasa_matriculaci_n_5_16': 'Tasa de Matrícula (%)',
+            'cobertura_neta': 'Cobertura Neta (%)',
+            'poblaci_n_5_16': 'Población 5-16 años',
+            'a_o': 'Año'
+        },
+        title="📊 Gráfico 3D: Relación entre Matrícula, Cobertura y Población"
+    )
+
+    fig3d.update_layout(
+        scene=dict(
+            xaxis_title='Tasa de Matrícula (%)',
+            yaxis_title='Cobertura Neta (%)',
+            zaxis_title='Población 5-16 años'
+        ),
+        height=700,
+        margin=dict(l=10, r=10, t=40, b=10)
+    )
+
+    st.plotly_chart(fig3d, use_container_width=True)
